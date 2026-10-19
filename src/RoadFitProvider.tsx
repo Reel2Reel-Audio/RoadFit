@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import type { Meal } from './data';
 import { isCloudConfigured, supabase } from './supabase';
 
 const STORAGE_KEY = 'roadfit.v1.state';
@@ -12,11 +13,14 @@ export type RoadFitState = {
   goalWeight: number | null;
   weightEntries: WeightEntry[];
   completedMeals: string[];
+  mealEdits: Record<string, Partial<Meal>>;
+  customMeals: Meal[];
+  deletedMealIds: string[];
   completedWorkouts: string[];
   workoutActivities: Record<string, string[]>;
   customWorkouts: CustomWorkout[];
   checkedShopping: string[];
-  waterGlasses: number;
+  waterLitres: number;
   lastSyncedAt: string | null;
 };
 
@@ -25,11 +29,14 @@ const initialState: RoadFitState = {
   goalWeight: null,
   weightEntries: [],
   completedMeals: [],
+  mealEdits: {},
+  customMeals: [],
+  deletedMealIds: [],
   completedWorkouts: [],
   workoutActivities: {},
   customWorkouts: [],
   checkedShopping: [],
-  waterGlasses: 0,
+  waterLitres: 0,
   lastSyncedAt: null,
 };
 
@@ -41,11 +48,15 @@ type ContextValue = {
   setStartingWeight: (weight: number) => void;
   setGoalWeight: (weight: number) => void;
   toggleMeal: (id: string) => void;
+  updateMeal: (id: string, updates: Partial<Omit<Meal, 'id'>>) => void;
+  addMeal: (day: string, type: string, title: string, details: string) => void;
+  deleteMeal: (id: string) => void;
   toggleWorkout: (id: string) => void;
   toggleWorkoutActivity: (workoutId: string, activityId: string) => void;
   addCustomWorkout: (title: string, duration: string, details: string, activities: string[]) => void;
   toggleShopping: (id: string) => void;
   addWater: () => void;
+  removeWater: () => void;
   resetWater: () => void;
   syncNow: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -65,7 +76,16 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved) setData({ ...initialState, ...JSON.parse(saved) });
+        if (saved) {
+          const parsed = JSON.parse(saved) as Partial<RoadFitState> & { waterGlasses?: number };
+          const migrated = {
+            ...initialState,
+            ...parsed,
+            waterLitres: parsed.waterLitres ?? (parsed.waterGlasses ?? 0) * 0.25,
+          };
+          delete (migrated as Partial<RoadFitState> & { waterGlasses?: number }).waterGlasses;
+          setData(migrated);
+        }
       } catch (e) {
         console.warn('Could not load RoadFit data', e);
       } finally {
@@ -118,6 +138,34 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
     });
   };
   const toggleMeal = useCallback((id: string) => toggleArray('completedMeals', id), []);
+  const updateMeal = useCallback((id: string, updates: Partial<Omit<Meal, 'id'>>) => {
+    mutate(prev => ({ ...prev, mealEdits: { ...prev.mealEdits, [id]: { ...prev.mealEdits[id], ...updates } } }));
+  }, [mutate]);
+  const addMeal = useCallback((day: string, type: string, title: string, details: string) => {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      Alert.alert('Add a meal name', 'Enter a name for the meal before saving it.');
+      return;
+    }
+    mutate(prev => ({
+      ...prev,
+      customMeals: [...prev.customMeals, {
+        id: `custom-meal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        day,
+        type: type.trim() || 'Meal',
+        title: cleanTitle,
+        details: details.trim(),
+        portable: true,
+      }],
+    }));
+  }, [mutate]);
+  const deleteMeal = useCallback((id: string) => {
+    mutate(prev => ({
+      ...prev,
+      deletedMealIds: prev.deletedMealIds.includes(id) ? prev.deletedMealIds : [...prev.deletedMealIds, id],
+      completedMeals: prev.completedMeals.filter(mealId => mealId !== id),
+    }));
+  }, [mutate]);
   const toggleWorkout = useCallback((id: string) => toggleArray('completedWorkouts', id), []);
   const toggleShopping = useCallback((id: string) => toggleArray('checkedShopping', id), []);
   const toggleWorkoutActivity = useCallback((workoutId: string, activityId: string) => {
@@ -153,8 +201,15 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
       }],
     }));
   }, [mutate]);
-  const addWater = useCallback(() => mutate(prev => ({ ...prev, waterGlasses: Math.min(prev.waterGlasses + 1, 30) })), [mutate]);
-  const resetWater = useCallback(() => mutate(prev => ({ ...prev, waterGlasses: 0 })), [mutate]);
+  const addWater = useCallback(() => mutate(prev => ({
+    ...prev,
+    waterLitres: Math.min(Math.round((prev.waterLitres + 0.25) * 100) / 100, 7.5),
+  })), [mutate]);
+  const removeWater = useCallback(() => mutate(prev => ({
+    ...prev,
+    waterLitres: Math.max(Math.round((prev.waterLitres - 0.25) * 100) / 100, 0),
+  })), [mutate]);
+  const resetWater = useCallback(() => mutate(prev => ({ ...prev, waterLitres: 0 })), [mutate]);
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) throw new Error('Cloud sync is not configured. Add your Supabase details to .env first.');
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -189,7 +244,7 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .maybeSingle();
       if (readError) throw readError;
-      const remote = (remoteRow?.payload ?? {}) as Partial<RoadFitState>;
+      const remote = (remoteRow?.payload ?? {}) as Partial<RoadFitState> & { waterGlasses?: number };
       const local = data;
       const byDate = new Map<string, WeightEntry>();
       [...(remote.weightEntries ?? []), ...local.weightEntries].forEach(entry => byDate.set(entry.date, entry));
@@ -198,6 +253,9 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
         ...initialState,
         ...remote,
         ...local,
+        mealEdits: { ...(remote.mealEdits ?? {}), ...local.mealEdits },
+        customMeals: [...new Map([...(remote.customMeals ?? []), ...local.customMeals].map(meal => [meal.id, meal])).values()],
+        deletedMealIds: [...new Set([...(remote.deletedMealIds ?? []), ...local.deletedMealIds])],
         startingWeight: local.startingWeight ?? remote.startingWeight ?? null,
         goalWeight: local.goalWeight ?? remote.goalWeight ?? null,
         weightEntries: [...byDate.values()].sort((a,b) => a.date.localeCompare(b.date)),
@@ -211,7 +269,7 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
           ]),
         ),
         checkedShopping: [...new Set([...(remote.checkedShopping ?? []), ...local.checkedShopping])],
-        waterGlasses: Math.max(remote.waterGlasses ?? 0, local.waterGlasses),
+        waterLitres: Math.max(remote.waterLitres ?? (remote.waterGlasses ?? 0) * 0.25, local.waterLitres),
         lastSyncedAt: syncedAt,
       };
       const { error: writeError } = await supabase.from('roadfit_user_data').upsert({
@@ -234,8 +292,8 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const value = useMemo(() => ({
     data, ready, cloudConfigured: isCloudConfigured, updateWeight, setStartingWeight, setGoalWeight,
-    toggleMeal, toggleWorkout, toggleWorkoutActivity, addCustomWorkout, toggleShopping, addWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress,
-  }), [data, ready, updateWeight, setStartingWeight, setGoalWeight, toggleMeal, toggleWorkout, toggleWorkoutActivity, addCustomWorkout, toggleShopping, addWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress]);
+    toggleMeal, updateMeal, addMeal, deleteMeal, toggleWorkout, toggleWorkoutActivity, addCustomWorkout, toggleShopping, addWater, removeWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress,
+  }), [data, ready, updateWeight, setStartingWeight, setGoalWeight, toggleMeal, updateMeal, addMeal, deleteMeal, toggleWorkout, toggleWorkoutActivity, addCustomWorkout, toggleShopping, addWater, removeWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress]);
   return <RoadFitContext.Provider value={value}>{children}</RoadFitContext.Provider>;
 }
 

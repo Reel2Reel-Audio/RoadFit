@@ -26,6 +26,18 @@ export const mealPlan: Meal[] = [
   { id:'m21', day:'Sunday', type:'Dinner', title:'Roast chicken or tofu, vegetables and potato', details:'Batch-cook safely; refrigerate promptly and keep chilled for transport.', portable:true },
 ];
 
+export function getMealPlan(
+  edits: Record<string, Partial<Meal>>,
+  customMeals: Meal[],
+  deletedMealIds: string[],
+) {
+  const deleted = new Set(deletedMealIds);
+  return [
+    ...mealPlan.filter(meal => !deleted.has(meal.id)).map(meal => ({ ...meal, ...edits[meal.id] })),
+    ...customMeals.filter(meal => !deleted.has(meal.id)).map(meal => ({ ...meal, ...edits[meal.id] })),
+  ];
+}
+
 export const snacks = [
   { id:'s1', title:'Whole fruit', details:'Apple, banana, mandarin or seasonal fruit' },
   { id:'s2', title:'Small pack of nuts', details:'Choose a portion that feels satisfying' },

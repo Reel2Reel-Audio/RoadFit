@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "RoadFit",
+    "slug": "roadfit",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "scheme": "roadfit",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.reel2reelaudio.roadfit"
+    },
+    "android": {
+      "package": "com.reel2reelaudio.roadfit",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "baseUrl": "/RoadFit"
+    }
+  }
+}

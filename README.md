@@ -5,7 +5,7 @@ RoadFit is an offline-first truck-driver fitness and weight-loss app. The first 
 - Weight logging and saved progress
 - Editable road-friendly meal and snack plans with add, edit and delete
 - Water intake tracking in litres (250 ml per tap)
-- Shopping list with checkboxes
+- Editable shopping list with categories, add/edit/remove controls and saved checkboxes
 - Editable weekly workouts: change workout days, names, type, duration, notes, and activity names, targets and cues; add or remove workouts and activities, then complete a session once all activities are done
 - Local persistence using AsyncStorage
 - Optional Supabase email-account cloud sync (requires your own Supabase project)

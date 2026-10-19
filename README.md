@@ -3,7 +3,8 @@
 RoadFit is an offline-first truck-driver fitness and weight-loss app. The first version includes:
 - Dashboard with today's plan and weekly completion
 - Weight logging and saved progress
-- Road-friendly meal planner (fridge/cooler, no microwave assumed)
+- Editable road-friendly meal planner with add, edit and delete
+- Water intake tracking in litres (250 ml per tap)
 - Shopping list with checkboxes
 - Five-day workout schedule: 3 strength days + 2 pool days, plus custom workouts; mark each activity and complete a session once all its activities are done
 - Local persistence using AsyncStorage

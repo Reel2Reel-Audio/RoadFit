@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, AppState } from 'react-native';
-import { getWorkouts, type Exercise, type Meal, type Snack, type Workout } from './data';
+import { getWorkouts, type Exercise, type Meal, type Snack, type ShoppingItem, type Workout } from './data';
 import { isCloudConfigured, supabase } from './supabase';
 
 const STORAGE_KEY = 'roadfit.v1.state';
@@ -68,6 +68,9 @@ export type RoadFitState = {
   customWorkouts: Workout[];
   deletedWorkoutIds: string[];
   checkedShopping: string[];
+  shoppingEdits: Record<string, Partial<ShoppingItem>>;
+  customShoppingItems: ShoppingItem[];
+  deletedShoppingItemIds: string[];
   waterLitres: number;
   lastActiveDate: string;
   lastSyncedAt: string | null;
@@ -90,6 +93,9 @@ const initialState: RoadFitState = {
   workoutEdits: {},
   deletedWorkoutIds: [],
   checkedShopping: [],
+  shoppingEdits: {},
+  customShoppingItems: [],
+  deletedShoppingItemIds: [],
   waterLitres: 0,
   lastActiveDate: localDateKey(),
   lastSyncedAt: null,
@@ -115,6 +121,9 @@ type ContextValue = {
   addWorkout: (day: string, title: string, duration: string, details: string, kind: Workout['kind'], exercises: Exercise[]) => void;
   deleteWorkout: (id: string) => void;
   toggleShopping: (id: string) => void;
+  updateShoppingItem: (id: string, updates: Partial<Omit<ShoppingItem, 'id'>>) => void;
+  addShoppingItem: (name: string, category: string) => void;
+  deleteShoppingItem: (id: string) => void;
   addWater: () => void;
   removeWater: () => void;
   resetWater: () => void;
@@ -289,6 +298,31 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
   }, [mutate]);
   const toggleWorkout = useCallback((id: string) => toggleArray('completedWorkouts', id), []);
   const toggleShopping = useCallback((id: string) => toggleArray('checkedShopping', id), []);
+  const updateShoppingItem = useCallback((id: string, updates: Partial<Omit<ShoppingItem, 'id'>>) => {
+    mutate(prev => ({ ...prev, shoppingEdits: { ...prev.shoppingEdits, [id]: { ...prev.shoppingEdits[id], ...updates } } }));
+  }, [mutate]);
+  const addShoppingItem = useCallback((name: string, category: string) => {
+    const cleanName = name.trim();
+    if (!cleanName) {
+      Alert.alert('Add an item name', 'Enter a name for the shopping item before saving it.');
+      return;
+    }
+    mutate(prev => ({
+      ...prev,
+      customShoppingItems: [...prev.customShoppingItems, {
+        id: `custom-shopping-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: cleanName,
+        category: category.trim() || 'Other',
+      }],
+    }));
+  }, [mutate]);
+  const deleteShoppingItem = useCallback((id: string) => {
+    mutate(prev => ({
+      ...prev,
+      deletedShoppingItemIds: prev.deletedShoppingItemIds.includes(id) ? prev.deletedShoppingItemIds : [...prev.deletedShoppingItemIds, id],
+      checkedShopping: prev.checkedShopping.filter(itemId => itemId !== id),
+    }));
+  }, [mutate]);
   const toggleWorkoutActivity = useCallback((workoutId: string, activityId: string) => {
     mutate(prev => {
       const current = prev.workoutActivities[workoutId] ?? [];
@@ -438,6 +472,9 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
           ]),
         ) : {},
         checkedShopping: [...new Set([...(remote.checkedShopping ?? []), ...local.checkedShopping])],
+        shoppingEdits: { ...(remote.shoppingEdits ?? {}), ...local.shoppingEdits },
+        customShoppingItems: [...new Map([...(remote.customShoppingItems ?? []), ...local.customShoppingItems].map(item => [item.id, item])).values()],
+        deletedShoppingItemIds: [...new Set([...(remote.deletedShoppingItemIds ?? []), ...local.deletedShoppingItemIds])],
         waterLitres: bothCopiesAreForToday
           ? Math.max(remote.waterLitres ?? (remote.waterGlasses ?? 0) * 0.25, local.waterLitres)
           : local.waterLitres,
@@ -464,8 +501,8 @@ export function RoadFitProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const value = useMemo(() => ({
     data, ready, cloudConfigured: isCloudConfigured, updateWeight, setStartingWeight, setGoalWeight,
-    toggleMeal, updateMeal, addMeal, deleteMeal, updateSnack, addSnack, deleteSnack, toggleWorkout, toggleWorkoutActivity, updateWorkout, addWorkout, deleteWorkout, toggleShopping, addWater, removeWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress,
-  }), [data, ready, updateWeight, setStartingWeight, setGoalWeight, toggleMeal, updateMeal, addMeal, deleteMeal, updateSnack, addSnack, deleteSnack, toggleWorkout, toggleWorkoutActivity, updateWorkout, addWorkout, deleteWorkout, toggleShopping, addWater, removeWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress]);
+    toggleMeal, updateMeal, addMeal, deleteMeal, updateSnack, addSnack, deleteSnack, toggleWorkout, toggleWorkoutActivity, updateWorkout, addWorkout, deleteWorkout, toggleShopping, updateShoppingItem, addShoppingItem, deleteShoppingItem, addWater, removeWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress,
+  }), [data, ready, updateWeight, setStartingWeight, setGoalWeight, toggleMeal, updateMeal, addMeal, deleteMeal, updateSnack, addSnack, deleteSnack, toggleWorkout, toggleWorkoutActivity, updateWorkout, addWorkout, deleteWorkout, toggleShopping, updateShoppingItem, addShoppingItem, deleteShoppingItem, addWater, removeWater, resetWater, syncNow, signIn, signUp, signOut, authEmail, clearProgress]);
   return <RoadFitContext.Provider value={value}>{children}</RoadFitContext.Provider>;
 }
 

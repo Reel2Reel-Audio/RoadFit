@@ -2,6 +2,7 @@ export type Meal = { id: string; day: string; type: string; title: string; detai
 export type Exercise = { name: string; dose: string; cue: string };
 export type Workout = { id: string; day: string; title: string; kind: 'strength' | 'pool'; duration: string; details: string; exercises: Exercise[] };
 export type Snack = { id: string; title: string; details: string };
+export type ShoppingItem = { id: string; category: string; name: string };
 
 export const mealPlan: Meal[] = [
   { id:'m1', day:'Monday', type:'Breakfast', title:'Overnight oats with yoghurt and berries', details:'Mix oats, plain yoghurt and berries in a sealed jar; keep chilled.', portable:true },
@@ -60,7 +61,7 @@ export function getSnackPlan(
   ];
 }
 
-export const shoppingItems = [
+export const shoppingItems: ShoppingItem[] = [
   { id:'p1', category:'Protein', name:'Chicken or ready-cooked chicken' },
   { id:'p2', category:'Protein', name:'Canned tuna or tuna pouches' },
   { id:'p3', category:'Protein', name:'Eggs' },
@@ -80,6 +81,18 @@ export const shoppingItems = [
   { id:'p17', category:'Equipment', name:'Insulated cooler bag and frozen ice packs' },
   { id:'p18', category:'Equipment', name:'Reusable water bottle and leakproof containers' },
 ];
+
+export function getShoppingList(
+  edits: Record<string, Partial<ShoppingItem>>,
+  customItems: ShoppingItem[],
+  deletedItemIds: string[],
+) {
+  const deleted = new Set(deletedItemIds);
+  return [
+    ...shoppingItems.filter(item => !deleted.has(item.id)).map(item => ({ ...item, ...edits[item.id] })),
+    ...customItems.filter(item => !deleted.has(item.id)).map(item => ({ ...item, ...edits[item.id] })),
+  ];
+}
 
 export const workouts: Workout[] = [
   { id:'w1', day:'Monday', title:'Strength A — Full body', kind:'strength', duration:'35–50 min', details:'Warm up 5–8 minutes. Start with 2 sets per exercise; leave 2–3 good reps in reserve.', exercises:[

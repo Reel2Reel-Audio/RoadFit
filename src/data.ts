@@ -1,6 +1,7 @@
 export type Meal = { id: string; day: string; type: string; title: string; details: string; portable: boolean };
 export type Exercise = { name: string; dose: string; cue: string };
 export type Workout = { id: string; day: string; title: string; kind: 'strength' | 'pool'; duration: string; details: string; exercises: Exercise[] };
+export type Snack = { id: string; title: string; details: string };
 
 export const mealPlan: Meal[] = [
   { id:'m1', day:'Monday', type:'Breakfast', title:'Overnight oats with yoghurt and berries', details:'Mix oats, plain yoghurt and berries in a sealed jar; keep chilled.', portable:true },
@@ -38,7 +39,7 @@ export function getMealPlan(
   ];
 }
 
-export const snacks = [
+export const snacks: Snack[] = [
   { id:'s1', title:'Whole fruit', details:'Apple, banana, mandarin or seasonal fruit' },
   { id:'s2', title:'Small pack of nuts', details:'Choose a portion that feels satisfying' },
   { id:'s3', title:'Wholegrain crackers', details:'Pair with tuna, cheese or hummus where practical' },
@@ -46,6 +47,18 @@ export const snacks = [
   { id:'s5', title:'UHT milk or tuna pouch', details:'Follow package storage instructions' },
   { id:'s6', title:'Greek yoghurt', details:'Only if kept cold in your cooler' },
 ];
+
+export function getSnackPlan(
+  edits: Record<string, Partial<Snack>>,
+  customSnacks: Snack[],
+  deletedSnackIds: string[],
+) {
+  const deleted = new Set(deletedSnackIds);
+  return [
+    ...snacks.filter(snack => !deleted.has(snack.id)).map(snack => ({ ...snack, ...edits[snack.id] })),
+    ...customSnacks.filter(snack => !deleted.has(snack.id)).map(snack => ({ ...snack, ...edits[snack.id] })),
+  ];
+}
 
 export const shoppingItems = [
   { id:'p1', category:'Protein', name:'Chicken or ready-cooked chicken' },
@@ -101,5 +114,17 @@ export const workouts: Workout[] = [
     {name:'Core',dose:'2 sets',cue:'Dead bug, bird dog or elevated plank.'},
   ]},
 ];
+
+export function getWorkouts(
+  edits: Record<string, Workout>,
+  customWorkouts: Workout[],
+  deletedWorkoutIds: string[],
+) {
+  const deleted = new Set(deletedWorkoutIds);
+  return [
+    ...workouts.filter(workout => !deleted.has(workout.id)).map(workout => edits[workout.id] ?? workout),
+    ...customWorkouts.filter(workout => !deleted.has(workout.id)),
+  ];
+}
 
 export const weekDays = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];

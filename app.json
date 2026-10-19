@@ -2,7 +2,7 @@
   "expo": {
     "name": "RoadFit",
     "slug": "roadfit",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "scheme": "roadfit",
     "userInterfaceStyle": "dark",
@@ -24,6 +24,13 @@
     },
     "experiments": {
       "baseUrl": "/RoadFit"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "27aa61fb-88a8-40a6-942c-a21318a3e452"
+      }
+    },
+    "owner": "reel2reel-audio"
   }
 }

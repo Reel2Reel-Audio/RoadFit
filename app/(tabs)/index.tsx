@@ -2,18 +2,18 @@ import React from 'react';
 import { ScrollView, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useRoadFit } from '../../src/RoadFitProvider';
-import { workouts, mealPlan } from '../../src/data';
+import { getMealPlan, workouts } from '../../src/data';
 import { AppText, Button, Card, Header, Pill, Screen, SmallLabel, C } from '../../src/ui';
 
 export default function Dashboard() {
-  const { data, toggleWorkout, toggleMeal, addWater } = useRoadFit();
+  const { data, toggleWorkout, toggleMeal, addWater, removeWater } = useRoadFit();
   const router = useRouter();
   const latest = data.weightEntries[data.weightEntries.length - 1]?.weight;
   const lost = data.startingWeight && latest ? Math.max(0, data.startingWeight - latest) : 0;
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const today = dayNames[new Date().getDay()];
   const todaysWorkout = workouts.find(w => w.day === today);
-  const todaysMeals = mealPlan.filter(m => m.day === today);
+  const todaysMeals = getMealPlan(data.mealEdits, data.customMeals, data.deletedMealIds).filter(m => m.day === today);
   const completedWorkoutCount = data.completedWorkouts.length;
   return <Screen><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
     <Header eyebrow="ROADFIT • YOUR CAB, YOUR PLAN" title="Ready for today?" subtitle="Small, consistent choices add up. Plan your break, then drive safely." />
@@ -38,7 +38,7 @@ export default function Dashboard() {
         <SmallLabel>WORKOUTS</SmallLabel><Text style={{ color: C.text, fontSize: 23, fontWeight: '800' }}>{completedWorkoutCount}</Text><AppText style={{ color: C.muted, fontSize: 11 }}>sessions completed</AppText>
       </Card>
       <Card style={{ flex: 1 }}>
-        <SmallLabel>WATER</SmallLabel><Text style={{ color: C.text, fontSize: 23, fontWeight: '800' }}>{data.waterGlasses}<Text style={{ color: C.muted, fontSize: 13 }}> glasses</Text></Text><Button title="+ Add water" onPress={addWater} secondary />
+        <SmallLabel>WATER</SmallLabel><Text style={{ color: C.text, fontSize: 23, fontWeight: '800' }}>{data.waterLitres.toFixed(2)}<Text style={{ color: C.muted, fontSize: 13 }}> L</Text></Text><View style={{ flexDirection: 'row', gap: 6 }}><View style={{ flex: 1 }}><Button title="− 250 ml" onPress={removeWater} secondary disabled={data.waterLitres < 0.25} /></View><View style={{ flex: 1 }}><Button title="+ 250 ml" onPress={addWater} secondary /></View></View>
       </Card>
     </View>
     <Card>

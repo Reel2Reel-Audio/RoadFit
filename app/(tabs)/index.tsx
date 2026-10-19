@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useRoadFit } from '../../src/RoadFitProvider';
-import { getMealPlan, workouts } from '../../src/data';
+import { getMealPlan, getWorkouts } from '../../src/data';
 import { AppText, Button, Card, Header, Pill, Screen, SmallLabel, C } from '../../src/ui';
 
 export default function Dashboard() {
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const lost = data.startingWeight && latest ? Math.max(0, data.startingWeight - latest) : 0;
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const today = dayNames[new Date().getDay()];
-  const todaysWorkout = workouts.find(w => w.day === today);
+  const todaysWorkout = getWorkouts(data.workoutEdits, data.customWorkouts, data.deletedWorkoutIds).find(w => w.day === today);
   const todaysMeals = getMealPlan(data.mealEdits, data.customMeals, data.deletedMealIds).filter(m => m.day === today);
   const completedWorkoutCount = data.completedWorkouts.length;
   return <Screen><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
